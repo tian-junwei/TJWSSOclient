@@ -11,6 +11,7 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpStatus;
@@ -63,9 +64,12 @@ public class SSOAuth implements Filter {
 		if(request.getRequestURI().equals(path + "/logout"))
 			doLogout(request, response, chain, ticket, URL);
 		else if(request.getRequestURI().equals(path + "/setCookie"))
-			setCookie(request, response);
-		else if(ticket != null)
-			authCookie(request, response, chain, ticket, URL);
+			authTicket(request, response,chain,URL);
+		else if(ticket != null){
+			HttpSession session = request.getSession();
+			request.setAttribute("username", session.getAttribute("username"));
+			chain.doFilter(request, response);
+		}
 		else
 			response.sendRedirect(URL);
 	}
@@ -77,45 +81,43 @@ public class SSOAuth implements Filter {
 		// TODO Auto-generated method stub
 	}
 	
-	private void setCookie(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		Cookie ticket = new Cookie(cookieName, request.getParameter("ticket"));
-		ticket.setPath(request.getContextPath()+"/");
-		ticket.setMaxAge(Integer.parseInt(request.getParameter("expiry")));
-		response.addCookie(ticket);
-		
+	private void authTicket(HttpServletRequest request, HttpServletResponse response,FilterChain chain,String URL) throws IOException, ServletException {
+		NameValuePair[] params = new NameValuePair[2];
+		params[0] = new NameValuePair("action", "authTicket");
+		params[1] = new NameValuePair("cookieName",request.getParameter("ticket"));
 		String gotoURL = request.getParameter("gotoURL");
-		if(gotoURL != null)
-			response.sendRedirect(gotoURL);
+		try {
+			JSONObject result = post(request, response, chain, params);
+			if(result.getBoolean("error")) {
+				response.sendRedirect(URL);
+			} else {
+				Cookie ticket = new Cookie(cookieName, request.getParameter("ticket"));
+				ticket.setPath(request.getContextPath()+"/");
+				ticket.setMaxAge(Integer.parseInt(request.getParameter("expiry")));
+				response.addCookie(ticket);
+				HttpSession session = request.getSession();
+				session.setAttribute("username", result.getString("username"));
+				if(gotoURL != null)
+					response.sendRedirect(gotoURL);
+			}
+		} catch (JSONException e) {
+			response.sendRedirect(URL);
+			throw new RuntimeException(e);
+		}
 	}
 
 	private void doLogout(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Cookie ticket, String URL) throws IOException, ServletException {
 		NameValuePair[] params = new NameValuePair[2];
 		params[0] = new NameValuePair("action", "logout");
 		params[1] = new NameValuePair("cookieName", ticket.getValue());
+		ticket.setMaxAge(0);
+		response.addCookie(ticket);
 		try {
 			post(request, response, chain, params);
 		} catch (JSONException e) {
 			throw new RuntimeException(e);
 		} finally {
 			response.sendRedirect(URL);
-		}
-	}
-
-	private void authCookie(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Cookie ticket, String URL) throws IOException, ServletException {
-		NameValuePair[] params = new NameValuePair[2];
-		params[0] = new NameValuePair("action", "authTicket");
-		params[1] = new NameValuePair("cookieName", ticket.getValue());
-		try {
-			JSONObject result = post(request, response, chain, params);
-			if(result.getBoolean("error")) {
-				response.sendRedirect(URL);
-			} else {
-				request.setAttribute("username", result.getString("username"));
-				chain.doFilter(request, response);
-			}
-		} catch (JSONException e) {
-			response.sendRedirect(URL);
-			throw new RuntimeException(e);
 		}
 	}
 	
