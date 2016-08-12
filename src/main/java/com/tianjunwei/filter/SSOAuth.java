@@ -79,7 +79,7 @@ public class SSOAuth implements Filter {
 	
 	private void setCookie(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		Cookie ticket = new Cookie(cookieName, request.getParameter("ticket"));
-		ticket.setPath("/");
+		ticket.setPath(request.getContextPath()+"/");
 		ticket.setMaxAge(Integer.parseInt(request.getParameter("expiry")));
 		response.addCookie(ticket);
 		
