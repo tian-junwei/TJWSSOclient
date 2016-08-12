@@ -7,7 +7,7 @@
     <init-param>
         <!-- 认证系统服务 -->
     	<param-name>SSOService</param-name>
-    	<param-value>http://passport.com:8080/WebSSOAuth/SSOAuth</param-value>
+    	<param-value>http://localhost:8080/SSOAuth</param-value>
     </init-param>
     <init-param>
         <!-- 认证系统ticket名称 -->
