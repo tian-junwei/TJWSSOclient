@@ -56,7 +56,7 @@ public class SSOAuth implements Filter {
 		Cookie[] cookies = request.getCookies();
 		if(cookies != null)
 			for(Cookie cookie : cookies) {
-				if(cookie.getName().equals(request.getContextPath()+"/"+cookieName)) {
+				if(cookie.getName().equals("/"+cookieName)) {
 					ticket = cookie;
 					break;
 				}
@@ -91,8 +91,8 @@ public class SSOAuth implements Filter {
 			if(result.getBoolean("error")) {
 				response.sendRedirect(URL);
 			} else {
-				Cookie ticket = new Cookie(request.getContextPath()+"/"+cookieName, request.getParameter("ticket"));
-				ticket.setPath(request.getContextPath()+"/");
+				Cookie ticket = new Cookie("/"+cookieName, request.getParameter("ticket"));
+				ticket.setPath("/");
 				ticket.setMaxAge(Integer.parseInt(request.getParameter("expiry")));
 				response.addCookie(ticket);
 				HttpSession session = request.getSession();
