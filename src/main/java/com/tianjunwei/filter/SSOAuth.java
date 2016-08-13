@@ -19,6 +19,7 @@ import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.util.StringUtils;
 
 /**
  * Servlet Filter implementation class SSOAuth
@@ -56,18 +57,20 @@ public class SSOAuth implements Filter {
 		Cookie[] cookies = request.getCookies();
 		if(cookies != null)
 			for(Cookie cookie : cookies) {
-				if(cookie.getName().equals(request.getContextPath()+"/"+cookieName)) {
+				if(cookie.getName().equals(cookieName)) {
 					ticket = cookie;
 					break;
 				}
 			}
+		HttpSession session = request.getSession();
+		String usernameString = (String) session.getAttribute("username");
+		
 		if(request.getRequestURI().equals(path + "/logout"))
 			doLogout(request, response, chain, ticket, URL);
-		else if(request.getRequestURI().equals(path + "/setCookie"))
+		else if(request.getRequestURI().equals(path + "/setCookie") && StringUtils.isEmpty(usernameString) )
 			authTicket(request, response,chain,URL);
-		else if(ticket != null){
-			HttpSession session = request.getSession();
-			request.setAttribute("username", session.getAttribute("username"));
+		else if(ticket != null && !StringUtils.isEmpty(usernameString)){
+			request.setAttribute("username", usernameString);
 			chain.doFilter(request, response);
 		}
 		else
@@ -91,7 +94,7 @@ public class SSOAuth implements Filter {
 			if(result.getBoolean("error")) {
 				response.sendRedirect(URL);
 			} else {
-				Cookie ticket = new Cookie(request.getContextPath()+"/"+cookieName, request.getParameter("ticket"));
+				Cookie ticket = new Cookie(cookieName, request.getParameter("ticket"));
 				ticket.setPath("/");
 				ticket.setMaxAge(Integer.parseInt(request.getParameter("expiry")));
 				response.addCookie(ticket);
